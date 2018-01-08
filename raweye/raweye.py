@@ -2,10 +2,48 @@ import sys
 import argparse
 import numpy as np
 from colour_demosaicing import demosaicing_CFA_Bayer_bilinear as demosaicing
+from colour_hdri import (
+        EXAMPLES_RESOURCES_DIRECTORY,
+        tonemapping_operator_simple,
+        tonemapping_operator_normalisation,
+        tonemapping_operator_gamma,
+        tonemapping_operator_logarithmic,
+        tonemapping_operator_exponential,
+        tonemapping_operator_logarithmic_mapping,
+        tonemapping_operator_exponentiation_mapping,
+        tonemapping_operator_Schlick1994,
+        tonemapping_operator_Tumblin1999,
+        tonemapping_operator_Reinhard2004,
+        tonemapping_operator_filmic)
 import matplotlib.pyplot as plt
 #from matplotlib.image import imsave
 from scipy.misc import imsave
 
+g_ccm = np.array([[1.2085, -0.2502, 0.0417],
+                  [-0.1174, 1.1625, -0.0452],
+                  [0.0226, -0.2524, 1.2298]])
+
+#@profile
+def rawfAwb(rawf, rgain, bgain, bayer='rggb'):
+    hrb_map = {'rggb': np.array([[rgain, 1.0],[1.0, bgain]]),
+               'bggr': np.array([[bgain, 1.0],[1.0, rgain]]),
+               'grbg': np.array([[1.0, rgain],[bgain, 1.0]]),
+               'gbrg': np.array([[1.0, bgain],[rgain, 1.0]])}
+
+    h_rb = hrb_map[bayer]
+    b_width = rawf.shape[1]
+    rawf = np.hsplit(rawf, b_width/2)
+    rawf = np.vstack(rawf)
+    b_shape = rawf.shape
+    rawf = rawf.reshape(-1,2,2)
+
+    rawf = rawf * h_rb
+
+    rawf = rawf.reshape(b_shape)
+    rawf = np.hstack(np.vsplit(rawf, b_width/2))
+    return rawf
+
+#@profile
 def mipirawtorawf(raw, h):
     raw10 = raw.reshape(h, -1, 5).astype(np.uint16) 
     a,b,c,d,e = [raw10[...,x] for x in range(5)]
@@ -21,6 +59,7 @@ def mipirawtorawf(raw, h):
     x = x.reshape(h, -1)
     return x / np.float(2**10)
 
+#@profile
 def raw10torawf(raw, h):
     raw10 = raw.reshape(h, -1, 5).astype(np.uint16) 
     a,b,c,d,e = [raw10[...,x] for x in range(5)]
@@ -36,6 +75,7 @@ def raw10torawf(raw, h):
     x = x.reshape(h, -1)
     return x / np.float(2**10)
 
+#@profile
 def raw16torawf(raw, h):
     return raw.reshape((h, -1))/np.float(2**16)
 
@@ -46,7 +86,7 @@ if "__main__" == __name__:
     parser.add_argument('-s', dest='offset', type=int, default = 0)
     parser.add_argument('-t', dest='rawtype', choices = ['raw10', 'raw16', 'raw'],
                         help='raw10: continue 10bits, raw: mipi 10bits, raw16: 16bits')
-    parser.add_argument('-b', dest='bayer', choices=['rggb', 'bggr', 'grbg', 'gbrg'], default='rggb')
+    parser.add_argument('-b', dest='bayer', choices=['rggb', 'bggr', 'grbg', 'gbrg', 'y'], default='rggb')
     parser.add_argument('-d', dest='dgain', type=float, default=1.0, help='digit gain apply')
     parser.add_argument('-o', dest='outfile', metavar='FILE', help='write image to FILE')
     parser.add_argument('infile', metavar='InputRawFile', help='source raw image')
@@ -72,20 +112,39 @@ if "__main__" == __name__:
         infile.read(args.offset)
         raw = np.fromfile(infile, dataType)
 
-    if args.width != None:
+    if args.width is not None and args.rawtype == 'raw10':
         raw.resize((int(args.width * 1.25 * args.height)))
 
-    rawf = rawtorawf(raw, args.height)
-    print('raw image shape:', rawf.shape)
+    if args.bayer != 'y':
+        #raw = raw - 16
+        #raw = (raw > 0) * raw
+
+        rawf = rawtorawf(raw, args.height)
+        print('raw image shape:', rawf.shape)
+
+        rawf = rawfAwb(rawf, 1.8, 1.8, args.bayer)
+
+        rgb = demosaicing(rawf, args.bayer)
+    else:
+        raw = raw / np.float(2**16)
+        rgb = raw.reshape(args.height, -1)
 
     if args.dgain > 1.0:
-        rawf = rawf * args.dgain
-    np.clip(rawf, 0.0, 1.0, out=rawf)
+        rgb = rgb * args.dgain
 
-    rgb = demosaicing(rawf, args.bayer)
+    #rgb = np.dot(rgb, g_ccm)
+
+    #rgb = rgb / (rgb + 1)
+    #rgb = tonemapping_operator_simple(rgb)
+
+    np.clip(rgb, 0.0, 1.0, out=rgb)
 
     if args.outfile:
-        imsave(args.outfile, rgb) 
+        imsave(args.outfile, rgb)
     else:
-        plt.imshow(rgb)
+        #plt.subplot(1, 3, 1)
+        cmap=None
+        if args.bayer == 'y':
+            cmap = 'gray'
+        plt.imshow(rgb, cmap=cmap)
         plt.show()
