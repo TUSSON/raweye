@@ -8,6 +8,6 @@ setup(
       author_email = 'tusson@163.com',
       url = 'https://github.com/TUSSON/raweye',
       keywords = ['raw10', 'raw16'],
-      scripts = ["raweye/raweye.py"],
+      scripts = ['raweye/raweye.py', 'raweye/rawimage.py'],
       classifiers = [],
 )
