@@ -31,10 +31,11 @@ if "__main__" == __name__:
     parser.add_argument('-H', dest='height', type=int, required=True)
     parser.add_argument('-W', dest='width', type=int)
     parser.add_argument('-s', dest='offset', type=int, default = 0)
-    parser.add_argument('-t', dest='rawtype', choices = ['raw10', 'raw16', 'raw', 'gray', 'yuv', 'yvu'],
+    parser.add_argument('-t', dest='rawtype', choices = ['raw10', 'raw16', 'raw8', 'raw', 'gray', 'yuv', 'yvu'],
                         help='raw10 : continue 10bits\n'
                              'raw   : mipi 10bits\n'
                              'raw16 : 16bits\n'
+                             'raw8  : 8bits\n'
                              'gray  : y 8bits\n'
                              'yuv   : yuv420 8bits\n'
                              'yvu   : yvu420 8bits')
@@ -51,6 +52,7 @@ if "__main__" == __name__:
 
     rawmap = {'raw10': Raw10Image(args.infile, args.width, args.height, args.offset, args.bayer),
               'raw'  : MipiRawImage(args.infile, args.width, args.height, args.offset, args.bayer),
+              'raw8': Raw8Image(args.infile, args.width, args.height, args.offset, args.bayer),
               'raw16': Raw16Image(args.infile, args.width, args.height, args.offset, args.bayer),
               'gray' : GrayImage(args.infile, args.width, args.height, args.offset),
               'yuv'  : YuvImage(args.infile, args.width, args.height, args.offset),

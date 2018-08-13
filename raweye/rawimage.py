@@ -38,7 +38,7 @@ def raw10torawf(raw, h):
     return x / np.float(2**10)
 
 def mipirawtorawf(raw, h):
-    raw10 = raw.reshape(h, -1, 5).astype(np.uint16) 
+    raw10 = raw.reshape(h, -1, 5).astype(np.uint16)
     a,b,c,d,e = [raw10[...,x] for x in range(5)]
     x1 = (a << 2) + ((e >> 0) & 0x03)
     x2 = (b << 2) + ((e >> 2) & 0x03)
@@ -51,6 +51,9 @@ def mipirawtorawf(raw, h):
     x = np.dstack((x1, x2, x3, x4))
     x = x.reshape(h, -1)
     return x / np.float(2**10)
+
+def raw8torawf(raw, h):
+    return raw.reshape((h, -1))/np.float(2**8)
 
 def raw16torawf(raw, h):
     return raw.reshape((h, -1))/np.float(2**16)
@@ -146,6 +149,12 @@ class MipiRawImage(RawBayerImage):
                               offset=offset, bayer=bayer,
                               dtype=np.uint8, rawtorawf=mipirawtorawf)
 
+class Raw8Image(RawBayerImage):
+    def __init__(self, path, width, height, offset=0, bayer='rggb'):
+        RawBayerImage.__init__(self, path=path, width=width,
+                              height=height, usize=1.0,
+                              offset=offset, bayer=bayer,
+                              dtype=np.uint8, rawtorawf=raw8torawf)
 
 class Raw16Image(RawBayerImage):
     def __init__(self, path, width, height, offset=0, bayer='rggb'):
