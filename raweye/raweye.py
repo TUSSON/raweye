@@ -18,7 +18,8 @@ from colour_hdri import (
         tonemapping_operator_filmic)
 import matplotlib.pyplot as plt
 #from matplotlib.image import imsave
-from scipy.misc import imsave
+#from scipy.misc import imsave
+from imageio import imwrite
 from rawimage import *
 
 g_ccm = np.array([[1.2085, -0.2502, 0.0417],
@@ -74,7 +75,7 @@ if "__main__" == __name__:
     np.clip(rgb, 0.0, 1.0, out=rgb)
 
     if args.outfile:
-        imsave(args.outfile, rgb)
+        imwrite(args.outfile, rgb)
     else:
         plt.imshow(rgb)
         plt.show()
